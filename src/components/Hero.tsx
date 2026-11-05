@@ -276,20 +276,6 @@ export default function Hero() {
           >
             <EnchantedArch entering={entering} />
 
-            <div className="pointer-events-none absolute -left-4 top-[8%] hidden xl:block">
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.9, duration: 0.8, ease: EASE }}
-                className="rounded-xl border border-gold/20 bg-midnight/75 px-4 py-3 shadow-[0_18px_40px_-24px_rgba(0,0,0,0.9)] backdrop-blur-sm"
-              >
-                <p className="text-[8px] uppercase tracking-[0.26em] text-gold/70">
-                  Currently building
-                </p>
-                <p className="mt-1 font-serif text-lg leading-none text-ivory">LifeLink QR</p>
-              </motion.div>
-            </div>
-
             <div className="pointer-events-none absolute -right-2 bottom-[10%] hidden xl:block">
               <motion.div
                 initial={{ opacity: 0, y: 10 }}

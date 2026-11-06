@@ -14,8 +14,8 @@ import ProjectPreview from "./ProjectPreview";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 /** Swipe distance (px) or flick speed that advances the carousel. */
-const SWIPE_DISTANCE = 60;
-const FLICK_VELOCITY = 0.45; // px per ms
+const SWIPE_DISTANCE = 36;
+const FLICK_VELOCITY = 0.25; // px per ms
 
 type CarouselProps = {
   projects: Project[];
@@ -244,7 +244,7 @@ export default function ProjectCarousel({ projects, onOpen }: CarouselProps) {
         >
           <span className="flex items-center gap-2 rounded-full border border-ivory/10 bg-midnight/60 px-3.5 py-1.5 text-[9px] uppercase tracking-[0.22em] text-ivory/45 backdrop-blur-sm">
             <MoveHorizontal className="h-3.5 w-3.5 text-gold/60" aria-hidden="true" />
-            Drag to explore
+            Swipe / drag to explore
           </span>
         </div>
       </div>

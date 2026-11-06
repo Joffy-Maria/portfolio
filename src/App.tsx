@@ -7,12 +7,12 @@ import Footer from "./components/Footer";
 import Hero from "./components/Hero";
 import Navbar from "./components/Navbar";
 import Projects from "./components/Projects";
-import ScrollFairy from "./components/ScrollFairy";
 import Skills from "./components/Skills";
+import { SwarmGateProvider } from "./components/SwarmGate";
 
 export default function App() {
   return (
-    <>
+    <SwarmGateProvider>
       <a href="#main" className="skip-link">
         Skip to content
       </a>
@@ -31,8 +31,7 @@ export default function App() {
 
       <Footer />
       <CursorGlow />
-      <ScrollFairy />
       <div className="grain-overlay" aria-hidden="true" />
-    </>
+    </SwarmGateProvider>
   );
 }

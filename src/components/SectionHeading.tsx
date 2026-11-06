@@ -1,4 +1,5 @@
 import { motion, useReducedMotion } from "framer-motion";
+import { useGatedSection } from "./SwarmGate";
 import { Sprig } from "./Botanical";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
@@ -13,7 +14,7 @@ type SectionHeadingProps = {
   className?: string;
 };
 
-function TitleWords({ title, className }: { title: string; className: string }) {
+function TitleWords({ title }: { title: string }) {
   const words = title.split(" ");
 
   return (
@@ -24,7 +25,7 @@ function TitleWords({ title, className }: { title: string; className: string }) 
           className="inline-block overflow-hidden pb-[0.16em] -mb-[0.16em] align-baseline"
         >
           <motion.span
-            className={`inline-block will-change-transform ${className}`}
+            className="inline-block will-change-transform"
             initial={{ y: "118%", rotate: 3 }}
             whileInView={{ y: "0%", rotate: 0 }}
             viewport={{ once: true, margin: "-80px" }}
@@ -50,53 +51,66 @@ export default function SectionHeading({
 }: SectionHeadingProps) {
   const isLight = tone === "light";
   const reduceMotion = useReducedMotion();
+  const { ref, gated } = useGatedSection();
 
-  if (reduceMotion) {
-    return (
+  const rootClassName = `${
+    align === "center" ? "mx-auto max-w-3xl text-center" : "max-w-3xl"
+  } ${className}`;
+
+  const staticHeading = (
+    <div className={rootClassName}>
       <div
-        className={`${align === "center" ? "mx-auto max-w-3xl text-center" : "max-w-3xl"} ${className}`}
+        className={`flex items-center gap-4 ${align === "center" ? "justify-center" : ""}`}
       >
-        <div
-          className={`flex items-center gap-4 ${align === "center" ? "justify-center" : ""}`}
-        >
-          <span className={`eyebrow ${isLight ? "text-gold-deep" : "text-gold"}`}>{index}</span>
-          <span
-            className={`h-px w-8 ${isLight ? "bg-gold-deep/50" : "bg-gold/45"}`}
-            aria-hidden="true"
-          />
-          <span className={`eyebrow ${isLight ? "text-ink/55" : "text-ivory/55"}`}>
-            {eyebrow}
-          </span>
-          <Sprig
-            className={`hidden h-5 w-16 sm:block ${isLight ? "text-gold-deep/50" : "text-gold/45"}`}
-          />
-        </div>
+        <span className={`eyebrow ${isLight ? "text-gold-deep" : "text-gold"}`}>{index}</span>
+        <span
+          className={`h-px w-8 ${isLight ? "bg-gold-deep/50" : "bg-gold/45"}`}
+          aria-hidden="true"
+        />
+        <span className={`eyebrow ${isLight ? "text-ink/55" : "text-ivory/55"}`}>
+          {eyebrow}
+        </span>
+        <Sprig
+          className={`hidden h-5 w-16 sm:block ${isLight ? "text-gold-deep/50" : "text-gold/45"}`}
+        />
+      </div>
 
-        <h2
-          className={`mt-5 font-serif text-[clamp(2.5rem,5.2vw,4.4rem)] font-light leading-[0.94] tracking-[-0.015em] ${
-            isLight ? "text-ink" : "text-ivory"
-          }`}
-        >
-          {title}
-        </h2>
+      <h2
+        className={`mt-5 font-serif text-[clamp(2.5rem,5.2vw,4.4rem)] font-light leading-[0.94] tracking-[-0.015em] ${
+          isLight ? "text-ink" : "text-ivory"
+        }`}
+      >
+        {title}
+      </h2>
 
-        {description ? (
-          <p
-            className={`mt-5 max-w-2xl text-[15px] leading-relaxed sm:text-base ${
-              align === "center" ? "mx-auto" : ""
-            } ${isLight ? "text-ink/65" : "text-ivory/60"}`}
-          >
-            {description}
-          </p>
-        ) : null}
+      {description ? (
+        <p
+          className={`mt-5 max-w-2xl text-[15px] leading-relaxed sm:text-base ${
+            align === "center" ? "mx-auto" : ""
+          } ${isLight ? "text-ink/65" : "text-ivory/60"}`}
+        >
+          {description}
+        </p>
+      ) : null}
+    </div>
+  );
+
+  /* Sealed by the fairy swarm: hold the static heading (hidden) until the
+     section is ready, then remount and run the animation. */
+  if (gated) {
+    return (
+      <div ref={ref} className="invisible" aria-hidden="true">
+        {staticHeading}
       </div>
     );
   }
 
+  if (reduceMotion) {
+    return staticHeading;
+  }
+
   return (
-    <div
-      className={`${align === "center" ? "mx-auto max-w-3xl text-center" : "max-w-3xl"} ${className}`}
-    >
+    <div ref={ref} className={rootClassName}>
       <div
         className={`flex items-center gap-4 ${align === "center" ? "justify-center" : ""}`}
       >
@@ -145,7 +159,7 @@ export default function SectionHeading({
           isLight ? "text-ink" : "text-ivory"
         }`}
       >
-        <TitleWords title={title} className="" />
+        <TitleWords title={title} />
       </h2>
 
       {description ? (

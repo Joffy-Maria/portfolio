@@ -99,6 +99,15 @@
     @apply mx-auto w-full max-w-[1320px] px-6 sm:px-8 lg:px-12;
   }
 
+  /*
+   * Sections stay sealed until their fairy swarm has flown. The gate only
+   * hides content — section backdrops sit outside .shell and stay visible,
+   * so the fairies fly over the incoming section's backdrop.
+   */
+  section.is-gated .shell {
+    visibility: hidden;
+  }
+
   .eyebrow {
     @apply font-sans text-[10px] font-medium uppercase tracking-[0.34em];
   }

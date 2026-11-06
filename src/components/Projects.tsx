@@ -5,7 +5,7 @@ import { projects } from "../data/projects";
 import { profile } from "../data/profile";
 import Fireflies from "./Fireflies";
 import Parallax from "./Parallax";
-import ProjectCard from "./ProjectCard";
+import ProjectCarousel from "./ProjectCarousel";
 import ProjectModal from "./ProjectModal";
 import Reveal from "./Reveal";
 import SectionHeading from "./SectionHeading";
@@ -31,10 +31,6 @@ function ArchWatermark() {
 export default function Projects() {
   const [selected, setSelected] = useState<Project | null>(null);
   const close = useCallback(() => setSelected(null), []);
-
-  const primary = projects.find((project) => project.featured === "primary")!;
-  const secondary = projects.find((project) => project.featured === "secondary")!;
-  const supporting = projects.filter((project) => project.featured === "supporting");
 
   return (
     <section
@@ -65,22 +61,11 @@ export default function Projects() {
           </p>
         </div>
 
-        <div className="mt-14 space-y-6">
-          <Reveal>
-            <ProjectCard project={primary} variant="primary" onOpen={setSelected} />
-          </Reveal>
-
-          <Reveal delay={0.05}>
-            <ProjectCard project={secondary} variant="secondary" onOpen={setSelected} />
-          </Reveal>
-
-          <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-3">
-            {supporting.map((project, index) => (
-              <Reveal key={project.id} delay={index * 0.06} className="h-full">
-                <ProjectCard project={project} variant="supporting" onOpen={setSelected} />
-              </Reveal>
-            ))}
-          </div>
+        <div className="mt-14">
+          {/* Deliberately NOT wrapped in Reveal: its animated blur/opacity
+              would flatten the carousel's 3D context. The swarm gate still
+              hides the whole shell until the fairies have flown. */}
+          <ProjectCarousel projects={projects} onOpen={setSelected} />
         </div>
 
         <Reveal delay={0.05}>

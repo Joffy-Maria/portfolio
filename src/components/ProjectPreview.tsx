@@ -1,6 +1,6 @@
 import type { Project } from "../data/projects";
 
-export default function ProjectPreview({ project }: { project: Project }) {
+export default function ProjectPreview({ project, eager = false }: { project: Project; eager?: boolean }) {
   const { screenshot } = project;
 
   return (
@@ -10,7 +10,7 @@ export default function ProjectPreview({ project }: { project: Project }) {
         alt={screenshot.alt}
         width={screenshot.width}
         height={screenshot.height}
-        loading="lazy"
+        loading={eager ? "eager" : "lazy"}
         decoding="async"
         className="h-full w-full object-cover object-top transition-transform duration-700 group-hover:scale-[1.02]"
       />

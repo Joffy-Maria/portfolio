@@ -220,7 +220,7 @@ export default function EnchantedArch({ entering = false }: { entering?: boolean
               type="button"
               key="garden-gate"
               onClick={() => setRevealed(true)}
-              aria-label="Reveal portrait of Joffy Maria Pius"
+              aria-label="Click to reveal: portrait of Joffy Maria Pius"
               className="absolute inset-0 z-10 cursor-pointer rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gold"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}

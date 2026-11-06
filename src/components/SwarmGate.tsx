@@ -11,6 +11,7 @@ import {
   useState,
 } from "react";
 import { FairyFigure } from "./Fairy";
+import type { FairyTone } from "./Fairy";
 
 type GateContextValue = {
   /** Sections whose content is allowed to load (fairies have flown). */
@@ -20,7 +21,22 @@ type GateContextValue = {
 const SwarmGateContext = createContext<GateContextValue | null>(null);
 
 const SWARM_DURATION = 2300;
-const FAST_SCROLL_VELOCITY = 2600; // px per second — flinging the wheel skips fairies
+
+/*
+ * The swarm flock, one tone per fairy, drawn from the site palette.
+ * Each tone keeps a light translucent wing over a saturated core so the
+ * fairies read on both the dark sections and the cream ones — where the
+ * old gold-only fairies vanished.
+ */
+const FAIRY_TONES: FairyTone[] = [
+  { wing: "#C6A66B", wingStroke: "#A98A50", body: "#A98A50", halo: "#C6A66B" }, // gold
+  { wing: "#E3A8B2", wingStroke: "#C77A85", body: "#C77A85", halo: "#C77A85" }, // rose
+  { wing: "#6FA68B", wingStroke: "#2E6B4F", body: "#174C3B", halo: "#2E6B4F" }, // emerald
+  { wing: "#A9BC93", wingStroke: "#647653", body: "#647653", halo: "#647653" }, // moss
+  { wing: "#84AFA8", wingStroke: "#2F5D5A", body: "#2F5D5A", halo: "#2F5D5A" }, // deep teal
+  { wing: "#9AA3A0", wingStroke: "#4A5250", body: "#202724", halo: "#4A5250" }, // charcoal
+  { wing: "#E6C87A", wingStroke: "#B08D4F", body: "#B08D4F", halo: "#C6A66B" }, // amber
+];
 
 /**
  * Lets Reveal / SectionHeading ask whether the section they live in has
@@ -60,12 +76,13 @@ type FairyFlight = {
   delay: number;
   size: number;
   flip: boolean;
+  tone: FairyTone;
   sparkles: Array<{ x: number; y: number; size: number; duration: string; delay: string }>;
 };
 
 function makeFlights(seed: number): FairyFlight[] {
   const random = mulberry32(seed);
-  return Array.from({ length: 7 }, () => {
+  return Array.from({ length: FAIRY_TONES.length }, (_, i) => {
     const fromLeft = random() > 0.35;
     const startY = 14 + random() * 52;
     const mid1Y = 10 + random() * 56;
@@ -92,6 +109,7 @@ function makeFlights(seed: number): FairyFlight[] {
       delay: random() * 0.25,
       size: 28 + random() * 14,
       flip: !fromLeft,
+      tone: FAIRY_TONES[i % FAIRY_TONES.length],
       sparkles,
     };
   });
@@ -116,19 +134,20 @@ function SwarmFairy({ flight }: { flight: FairyFlight }) {
       }}
     >
       <div style={{ transform: flight.flip ? "scaleX(-1)" : undefined }}>
-        <FairyFigure size={flight.size} gradientId="swarm-fairy-halo" />
+        <FairyFigure size={flight.size} gradientId="swarm-fairy-halo" tone={flight.tone} />
       </div>
       {flight.sparkles.map((sparkle, i) => (
         <span
           key={i}
-          className="twinkle absolute block rounded-full bg-gold-light"
+          className="twinkle absolute block rounded-full"
           style={
             {
               left: sparkle.x,
               top: sparkle.y,
               width: sparkle.size,
               height: sparkle.size,
-              boxShadow: "0 0 7px 1px rgba(228,205,156,0.7)",
+              backgroundColor: flight.tone.body,
+              boxShadow: `0 0 7px 1px ${flight.tone.body}`,
               "--tw-duration": sparkle.duration,
               "--tw-delay": sparkle.delay,
             } as CSSProperties
@@ -141,11 +160,13 @@ function SwarmFairy({ flight }: { flight: FairyFlight }) {
 
 function SwarmOverlay({ seed, onDone }: { seed: number; onDone: () => void }) {
   const flights = useMemo(() => makeFlights(seed), [seed]);
+  const onDoneRef = useRef(onDone);
+  onDoneRef.current = onDone;
 
   useEffect(() => {
-    const t = window.setTimeout(onDone, SWARM_DURATION);
+    const t = window.setTimeout(() => onDoneRef.current(), SWARM_DURATION);
     return () => window.clearTimeout(t);
-  }, [onDone]);
+  }, [seed]);
 
   return (
     <div
@@ -176,41 +197,51 @@ function SwarmOverlay({ seed, onDone }: { seed: number; onDone: () => void }) {
 /**
  * Holds the sections sealed until their fairy swarm has flown.
  * Sections load when:
- * - their swarm finishes (normal scrolling down into them), or
- * - the user scrolls back up into them, or flings past them fast, or
+ * - their swarm finishes (scrolling into them, either direction), or
  * - an anchor jump skips over them (then the target section swarms).
- * Disabled entirely under reduced motion.
+ *
+ * Leaving a section seals it again, so scrolling back to it replays the
+ * swarm — with a short cooldown so bouncing on a boundary doesn't keep
+ * the content hidden. Disabled entirely under reduced motion.
  */
 export function SwarmGateProvider({ children }: { children: ReactNode }) {
   const reduceMotion = useReducedMotion();
   const [ready, setReady] = useState<ReadonlySet<string>>(() => new Set(["home"]));
   const [swarm, setSwarm] = useState<{ key: number; id: string } | null>(null);
   const readyRef = useRef(ready);
-  readyRef.current = ready;
-  const swarmingRef = useRef(false);
+  const swarmIdRef = useRef<string | null>(null);
   const queueRef = useRef<string[]>([]);
-  const lastYRef = useRef(0);
-  const lastTRef = useRef(0);
+  const lastSwarmAtRef = useRef<Record<string, number>>({});
 
+  /* Keep the ref current synchronously: finishSwarm drains the queue in
+     the same tick as markReady, before the re-render would propagate. */
   const markReady = useCallback((id: string) => {
-    setReady((prev) => {
-      if (prev.has(id)) return prev;
-      const next = new Set(prev);
-      next.add(id);
-      return next;
-    });
+    if (readyRef.current.has(id)) return;
+    const next = new Set(readyRef.current);
+    next.add(id);
+    readyRef.current = next;
+    setReady(next);
+  }, []);
+
+  const sealSection = useCallback((id: string) => {
+    if (!readyRef.current.has(id)) return;
+    const next = new Set(readyRef.current);
+    next.delete(id);
+    readyRef.current = next;
+    setReady(next);
   }, []);
 
   const startSwarm = useCallback((id: string) => {
-    if (readyRef.current.has(id)) return;
-    swarmingRef.current = true;
+    if (readyRef.current.has(id) || swarmIdRef.current === id) return;
+    lastSwarmAtRef.current[id] = performance.now();
+    swarmIdRef.current = id;
     setSwarm({ key: Date.now(), id });
   }, []);
 
   const finishSwarm = useCallback(
     (id: string) => {
       markReady(id);
-      swarmingRef.current = false;
+      swarmIdRef.current = null;
       setSwarm(null);
       while (queueRef.current.length > 0) {
         const next = queueRef.current.shift() as string;
@@ -229,7 +260,7 @@ export function SwarmGateProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (reduceMotion) return;
-    lastTRef.current = performance.now();
+
     const sections = Array.from(
       document.querySelectorAll("main section[id]"),
     ) as HTMLElement[];
@@ -239,25 +270,31 @@ export function SwarmGateProvider({ children }: { children: ReactNode }) {
       if (el.getBoundingClientRect().bottom < 0) markReady(el.id);
     });
 
-    const io = new IntersectionObserver((entries) => {
-      const now = performance.now();
-      const y = window.scrollY;
-      const dt = Math.max(now - lastTRef.current, 1);
-      const velocity = (Math.abs(y - lastYRef.current) / dt) * 1000;
-      const scrollingDown = y >= lastYRef.current;
-      lastYRef.current = y;
-      lastTRef.current = now;
+    /* Delay between swarms for the same section, so jiggling on a
+       section boundary doesn't cycle the gate on and off. */
+    const REPEAT_COOLDOWN = 4500;
 
+    const io = new IntersectionObserver((entries) => {
       for (const entry of entries) {
-        if (!entry.isIntersecting) continue;
         const id = (entry.target as HTMLElement).id;
+        if (!entry.isIntersecting) {
+          /* The section has fully left the viewport: seal it again (from
+             read-only, off-screen state) so coming back replays the swarm. */
+          sealSection(id);
+          continue;
+        }
         if (readyRef.current.has(id)) continue;
-        if (!scrollingDown || velocity > FAST_SCROLL_VELOCITY) {
+        /* Already flying for this section, or waiting its turn — leave it
+           alone so the swarm is never short-circuited mid-flight. */
+        if (swarmIdRef.current === id || queueRef.current.includes(id)) continue;
+        const lastSwarmAt = lastSwarmAtRef.current[id] ?? 0;
+        if (performance.now() - lastSwarmAt < REPEAT_COOLDOWN) {
+          /* Recently opened — bounce back in instantly, no fairies. */
           markReady(id);
           continue;
         }
-        if (swarmingRef.current) {
-          if (!queueRef.current.includes(id)) queueRef.current.push(id);
+        if (swarmIdRef.current) {
+          queueRef.current.push(id);
           continue;
         }
         startSwarm(id);
@@ -265,7 +302,7 @@ export function SwarmGateProvider({ children }: { children: ReactNode }) {
     });
     sections.forEach((s) => io.observe(s));
     return () => io.disconnect();
-  }, [reduceMotion, markReady, startSwarm]);
+  }, [reduceMotion, markReady, sealSection, startSwarm]);
 
   useEffect(() => {
     if (reduceMotion) return;
@@ -278,7 +315,8 @@ export function SwarmGateProvider({ children }: { children: ReactNode }) {
       sections.slice(0, idx).forEach((s) => markReady(s.id));
       if (readyRef.current.has(id)) return;
       queueRef.current = [];
-      if (swarmingRef.current) queueRef.current.push(id);
+      if (swarmIdRef.current === id) return;
+      if (swarmIdRef.current) queueRef.current.push(id);
       else startSwarm(id);
     };
     window.addEventListener("hashchange", onHashChange);

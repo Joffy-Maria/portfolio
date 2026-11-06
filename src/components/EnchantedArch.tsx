@@ -1,4 +1,5 @@
-import { useMemo } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { useEffect, useState } from "react";
 import Fireflies from "./Fireflies";
 
 const CX = 350;
@@ -126,128 +127,43 @@ const sparks = [
   { x: 262, y: 596, s: 0.5, d: 2.6 },
 ];
 
-function Blossom({
-  x,
-  y,
-  scale = 1,
-  rotate = 0,
-  tone = "ivory",
-}: {
-  x: number;
-  y: number;
-  scale?: number;
-  rotate?: number;
-  tone?: "ivory" | "rose";
-}) {
-  const petalFill = tone === "ivory" ? "#F3EBDD" : "#E9C9C9";
-  return (
-    <g transform={`translate(${x} ${y}) rotate(${rotate}) scale(${scale})`}>
-      {[0, 72, 144, 216, 288].map((angle, i) => (
-        <ellipse
-          key={angle}
-          cx="0"
-          cy="-8.6"
-          rx={4.9}
-          ry={9}
-          transform={`rotate(${angle})`}
-          fill={i % 2 === 0 ? petalFill : tone === "ivory" ? "#EFE2CE" : "#DDB0B6"}
-          fillOpacity={0.96}
-          stroke="#C6A66B"
-          strokeOpacity={0.35}
-          strokeWidth={0.55}
-        />
-      ))}
-      <circle r="3.9" fill="#C6A66B" />
-      <circle r="1.7" fill="#F6E7BE" />
-      {[0, 72, 144, 216, 288].map((angle) => {
-        const rad = (angle * Math.PI) / 180;
-        return (
-          <circle
-            key={`dot-${angle}`}
-            cx={Math.cos(rad) * 6}
-            cy={Math.sin(rad) * 6}
-            r="0.85"
-            fill="#F3EBDD"
-            fillOpacity=".8"
-          />
-        );
-      })}
-    </g>
-  );
-}
-
-function FlowerCluster({
-  x,
-  y,
-  scale = 1,
-  rotate = 0,
-}: {
-  x: number;
-  y: number;
-  scale?: number;
-  rotate?: number;
-}) {
-  return (
-    <g transform={`translate(${x} ${y}) rotate(${rotate}) scale(${scale})`}>
-      <path
-        d="M0 0c-6 14-20 20-32 18M0 0c10 12 24 15 34 10M0 0c-2 16-10 26-18 32"
-        stroke="#4C6A4A"
-        strokeWidth="1.4"
-        fill="none"
-        strokeLinecap="round"
-        opacity=".9"
-      />
-      <Blossom x={-34} y={18} scale={0.72} rotate={-18} tone="rose" />
-      <Blossom x={34} y={10} scale={0.62} rotate={22} />
-      <Blossom x={-18} y={33} scale={0.5} rotate={40} tone="rose" />
-      <Blossom x={0} y={0} scale={1.05} rotate={8} />
-      {[
-        [-46, 4],
-        [-26, 6],
-        [18, -8],
-        [46, 22],
-      ].map(([bx, by], i) => (
-        <g key={`bud-${i}`} transform={`translate(${bx} ${by})`}>
-          <circle r="3.4" fill="#C77A85" fillOpacity=".85" />
-          <path d="M0 -3.4c2 -3 4 -3 5 -1-1 2-3 3-5 1Z" fill="#4C6A4A" />
-        </g>
-      ))}
-      {[
-        [-54, 30, -30],
-        [52, -6, 24],
-        [-12, -16, 12],
-      ].map(([lx, ly, lr], i) => (
-        <path
-          key={`leaf-${i}`}
-          d={leafPath}
-          transform={`translate(${lx} ${ly}) rotate(${lr}) scale(${0.5 + i * 0.08})`}
-          fill="#4C6A4A"
-          fillOpacity=".85"
-        />
-      ))}
-    </g>
-  );
-}
+/* The arch is deliberately flower-free — only ivy, moss, cracks and sparkles dress the stone ring. */
 
 const ivyLeft = buildLeaves(Math.PI * 0.72, Math.PI * 1.68, OUTER + 8, 22, 5);
 const ivyRight = buildLeaves(Math.PI * 1.78, Math.PI * 2.24, OUTER + 9, 11, 9);
 const ivyBottom = buildLeaves(Math.PI * 0.18, Math.PI * 0.52, OUTER + 10, 8, 14);
 
-const clusterAngles = [
-  { angle: Math.PI * 1.16, r: OUTER + 26, scale: 1.15, rotate: -8 },
-  { angle: Math.PI * 0.86, r: OUTER + 30, scale: 0.9, rotate: 18 },
-  { angle: Math.PI * 1.86, r: OUTER + 26, scale: 1.02, rotate: 6 },
-  { angle: Math.PI * 0.36, r: OUTER + 30, scale: 0.88, rotate: -14 },
-];
+const GATE_EASE = [0.22, 1, 0.36, 1] as const;
+
+/* Leaves that make up the two halves of the garden gate (700-space coords). */
+const gateLeftLeaves = buildLeaves(Math.PI * 0.5, Math.PI * 1.5, 196, 18, 11);
+const gateRightLeaves = buildLeaves(Math.PI * 1.5, Math.PI * 2.5, 196, 18, 13);
 
 export default function EnchantedArch({ entering = false }: { entering?: boolean }) {
-  const clusters = useMemo(
-    () =>
-      clusterAngles.map((cluster) => {
-        const [x, y] = polar(cluster.r, cluster.angle);
-        return { ...cluster, x, y };
-      }),
-    [],
+  const reduceMotion = useReducedMotion();
+  const [revealed, setRevealed] = useState<boolean>(reduceMotion === true);
+
+  /* Reduced motion: show the portrait immediately, no garden gate. */
+  useEffect(() => {
+    if (reduceMotion) setRevealed(true);
+  }, [reduceMotion]);
+
+  /* The portal entry also reveals the portrait. */
+  useEffect(() => {
+    if (entering) setRevealed(true);
+  }, [entering]);
+
+  const portrait = (
+    <img
+      src="/images/portrait.webp"
+      alt={revealed ? "Portrait of Joffy Maria Pius" : ""}
+      aria-hidden={!revealed}
+      width={941}
+      height={1672}
+      fetchPriority="high"
+      decoding="async"
+      className="h-full w-full object-cover object-[50%_0%]"
+    />
   );
 
   return (
@@ -260,17 +176,24 @@ export default function EnchantedArch({ entering = false }: { entering?: boolean
         className="gentle-pulse absolute inset-[6%] rounded-full bg-[radial-gradient(circle,rgba(228,205,156,0.34),rgba(198,166,107,0.12)_46%,transparent_68%)] blur-2xl"
       />
 
-      {/* Portrait inside the opening */}
+      {/* Portrait inside the opening — hidden behind the garden gate until revealed */}
       <div className="absolute inset-[13.6%] overflow-hidden rounded-full bg-forest shadow-[inset_0_0_60px_rgba(7,29,32,0.85)]">
-        <img
-          src="/images/portrait.webp"
-          alt="Portrait of Joffy Maria Pius"
-          width={941}
-          height={1672}
-          fetchPriority="high"
-          decoding="async"
-          className="h-full w-full object-cover object-[50%_0%]"
-        />
+        {reduceMotion ? (
+          portrait
+        ) : (
+          <motion.div
+            className="absolute inset-0"
+            initial={{ scale: 0.94, filter: "blur(10px)" }}
+            animate={
+              revealed
+                ? { scale: 1, filter: "blur(0px)" }
+                : { scale: 0.94, filter: "blur(10px)" }
+            }
+            transition={{ duration: 1.1, ease: GATE_EASE }}
+          >
+            {portrait}
+          </motion.div>
+        )}
         <div
           aria-hidden="true"
           className="absolute inset-0 bg-[radial-gradient(circle_at_38%_18%,rgba(243,235,221,0.22),transparent_48%)]"
@@ -289,6 +212,168 @@ export default function EnchantedArch({ entering = false }: { entering?: boolean
             entering ? "shadow-[inset_0_0_80px_rgba(228,205,156,0.45)]" : ""
           }`}
         />
+
+        {/* Garden gate — click to part the ivy and reveal the portrait */}
+        <AnimatePresence>
+          {!revealed && (
+            <motion.button
+              type="button"
+              key="garden-gate"
+              onClick={() => setRevealed(true)}
+              aria-label="Reveal portrait of Joffy Maria Pius"
+              className="absolute inset-0 z-10 cursor-pointer rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gold"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0, transition: { duration: 0.45, delay: 0.35 } }}
+            >
+              {/* Left half of the gate */}
+              <motion.span
+                aria-hidden="true"
+                className="absolute inset-y-0 left-0 w-1/2 overflow-hidden rounded-l-full bg-[radial-gradient(circle_at_100%_50%,#14352a,#071512_80%)]"
+                style={{ transformOrigin: "0% 50%" }}
+                exit={{
+                  x: "-118%",
+                  rotate: -7,
+                  opacity: 0,
+                  transition: { duration: 0.9, ease: GATE_EASE },
+                }}
+              >
+                <svg
+                  viewBox="0 0 200 200"
+                  className="absolute inset-y-0 left-0 h-full w-[200%]"
+                  aria-hidden="true"
+                >
+                  <g transform="translate(-250 -250) scale(0.5714)">
+                    <g fill="none" stroke="#3C5A43" strokeWidth="7" strokeLinecap="round" opacity="0.9">
+                      <path d={arcPath(190, Math.PI * 0.52, Math.PI * 1.48)} />
+                      <path d={arcPath(138, Math.PI * 0.55, Math.PI * 1.45)} />
+                      <path d="M100 96C170 150 250 260 344 342" />
+                    </g>
+                    {gateLeftLeaves.map((leaf, i) => (
+                      <path
+                        key={i}
+                        d={leafPath}
+                        transform={`translate(${leaf.x.toFixed(1)} ${leaf.y.toFixed(1)}) rotate(${leaf.rotation.toFixed(
+                          1,
+                        )}) scale(${leaf.scale.toFixed(2)})`}
+                        fill={leaf.fill}
+                        fillOpacity="0.95"
+                        stroke="#1B3227"
+                        strokeWidth="1.2"
+                      />
+                    ))}
+                  </g>
+                </svg>
+              </motion.span>
+
+              {/* Right half of the gate */}
+              <motion.span
+                aria-hidden="true"
+                className="absolute inset-y-0 right-0 w-1/2 overflow-hidden rounded-r-full bg-[radial-gradient(circle_at_0%_50%,#14352a,#071512_80%)]"
+                style={{ transformOrigin: "100% 50%" }}
+                exit={{
+                  x: "118%",
+                  rotate: 7,
+                  opacity: 0,
+                  transition: { duration: 0.9, ease: GATE_EASE },
+                }}
+              >
+                <svg
+                  viewBox="0 0 200 200"
+                  className="absolute inset-y-0 right-0 h-full w-[200%]"
+                  aria-hidden="true"
+                >
+                  <g transform="translate(-250 -250) scale(0.5714)">
+                    <g fill="none" stroke="#3C5A43" strokeWidth="7" strokeLinecap="round" opacity="0.9">
+                      <path d={arcPath(190, Math.PI * 1.52, Math.PI * 2.48)} />
+                      <path d={arcPath(138, Math.PI * 1.55, Math.PI * 2.45)} />
+                      <path d="M600 104C530 150 450 262 356 342" />
+                    </g>
+                    {gateRightLeaves.map((leaf, i) => (
+                      <path
+                        key={i}
+                        d={leafPath}
+                        transform={`translate(${leaf.x.toFixed(1)} ${leaf.y.toFixed(1)}) rotate(${leaf.rotation.toFixed(
+                          1,
+                        )}) scale(${leaf.scale.toFixed(2)})`}
+                        fill={leaf.fill}
+                        fillOpacity="0.95"
+                        stroke="#1B3227"
+                        strokeWidth="1.2"
+                      />
+                    ))}
+                  </g>
+                </svg>
+              </motion.span>
+
+              {/* Center bud at the seam */}
+              <motion.span
+                aria-hidden="true"
+                className="absolute inset-0 flex items-center justify-center"
+                exit={{
+                  opacity: 0,
+                  scale: 1.7,
+                  transition: { duration: 0.55, ease: GATE_EASE },
+                }}
+              >
+                <span className="relative block h-16 w-16">
+                  <span className="absolute inset-0 rounded-full bg-gold/20 blur-xl" />
+                  <svg viewBox="0 0 48 48" className="absolute inset-0 h-full w-full">
+                    {[0, 72, 144, 216, 288].map((angle) => (
+                      <path
+                        key={angle}
+                        d={leafPath}
+                        transform={`translate(24 24) rotate(${angle}) scale(1.2)`}
+                        fill="#4C6A4A"
+                        fillOpacity="0.95"
+                      />
+                    ))}
+                    <circle cx="24" cy="24" r="3.4" fill="#C6A66B" />
+                  </svg>
+                </span>
+              </motion.span>
+
+              {/* Sparkles drifting on the gate */}
+              <motion.svg
+                aria-hidden="true"
+                viewBox="0 0 200 200"
+                className="pointer-events-none absolute inset-0 h-full w-full"
+                exit={{ opacity: 0, transition: { duration: 0.3 } }}
+              >
+                <g fill="#F6E7BE">
+                  {[
+                    { x: 58, y: 66, s: 0.8, d: 0.2 },
+                    { x: 144, y: 104, s: 0.6, d: 0.9 },
+                    { x: 100, y: 152, s: 0.5, d: 1.5 },
+                  ].map((spark, i) => (
+                    <g key={i} transform={`translate(${spark.x} ${spark.y}) scale(${spark.s})`}>
+                      <path
+                        className="twinkle"
+                        style={{
+                          animationDelay: `${spark.d}s`,
+                          transformBox: "fill-box",
+                          transformOrigin: "center",
+                        }}
+                        d="M0 -5 1.3 -1.3 5 0 1.3 1.3 0 5 -1.3 1.3 -5 0 -1.3 -1.3Z"
+                      />
+                    </g>
+                  ))}
+                </g>
+              </motion.svg>
+
+              {/* Reveal hint */}
+              <motion.span
+                aria-hidden="true"
+                className="absolute bottom-[11%] left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full border border-gold/40 bg-midnight/80 px-3.5 py-2 text-[9px] uppercase tracking-[0.24em] text-gold-light"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1, transition: { delay: 0.5 } }}
+                exit={{ opacity: 0, transition: { duration: 0.3 } }}
+              >
+                Click to reveal
+              </motion.span>
+            </motion.button>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* The stone arch and its overgrowth */}
@@ -410,24 +495,6 @@ export default function EnchantedArch({ entering = false }: { entering?: boolean
               fillOpacity="0.85"
             />
           ))}
-        </g>
-
-        {/* Flower clusters */}
-        {clusters.map((cluster, i) => (
-          <FlowerCluster
-            key={i}
-            x={cluster.x}
-            y={cluster.y}
-            scale={cluster.scale}
-            rotate={cluster.rotate}
-          />
-        ))}
-
-        {/* Falling petals caught on the ring */}
-        <g fill="#C77A85" fillOpacity="0.65">
-          <ellipse cx="196" cy="414" rx="4" ry="2.4" transform="rotate(-28 196 414)" />
-          <ellipse cx="504" cy="268" rx="3.6" ry="2.1" transform="rotate(34 504 268)" />
-          <ellipse cx="382" cy="612" rx="3" ry="1.8" transform="rotate(-12 382 612)" />
         </g>
 
         {/* Sparkles */}

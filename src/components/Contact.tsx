@@ -176,9 +176,21 @@ export default function Contact() {
 
     const subject = `Portfolio enquiry from ${values.name.trim()}`;
     const body = `Name: ${values.name.trim()}\nEmail: ${values.email.trim()}\n\n${values.message.trim()}`;
+
+    // Fires first so visitors with a default mail app get their usual flow.
+    // If none is configured, the browser simply ignores the mailto: navigation.
     window.location.href = `mailto:${profile.email}?subject=${encodeURIComponent(
       subject,
     )}&body=${encodeURIComponent(body)}`;
+
+    // Fallback: Gmail in the browser, message pre-filled in a new tab.
+    const gmailUrl =
+      "https://mail.google.com/mail/?view=cm&fs=1" +
+      `&to=${encodeURIComponent(profile.email)}` +
+      `&su=${encodeURIComponent(subject)}` +
+      `&body=${encodeURIComponent(body)}`;
+    window.open(gmailUrl, "_blank", "noopener");
+
     setStatus("opened");
   };
 
@@ -327,8 +339,8 @@ export default function Contact() {
               <div className="relative">
                 <h3 className="font-serif text-2xl text-ivory sm:text-[1.8rem]">Send a message</h3>
                 <p className="mt-1.5 text-[11.5px] leading-relaxed text-ivory/40">
-                  This form opens your email app with the message ready to send. Nothing is stored
-                  on a server.
+                  This form opens Gmail in your browser with the message ready to send (and your
+                  default mail app, if you have one). Nothing is stored on a server.
                 </p>
 
                 <form onSubmit={handleSubmit} noValidate className="mt-6 space-y-4">
@@ -433,8 +445,8 @@ export default function Contact() {
                   <div role="status" aria-live="polite" className="min-h-[20px]">
                     {status === "opened" ? (
                       <p className="rounded-lg border border-gold/25 bg-gold/[0.06] px-3 py-2 text-[11.5px] leading-relaxed text-gold-light">
-                        Your email app should now be open with the message ready to send. If it
-                        didn&apos;t open, email me directly at{" "}
+                        Gmail should now be open in a new tab with your message ready — just press
+                        send there. If it didn&apos;t open, email me directly at{" "}
                         <a href={`mailto:${profile.email}`} className="underline underline-offset-2">
                           {profile.email}
                         </a>
